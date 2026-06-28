@@ -60,17 +60,16 @@ enum ClearanceStatus {
 // ============================================================
 
 model Institution {
-  id                    String          @id @default(cuid())
+  id                    String         @id @default(cuid())
   name                  String
-  slug                  String          @unique
-  type                  InstitutionType
-  contractStatus        ContractStatus  @default(TRIAL)
-  customDomain          String?         @unique
+  slug                  String         @unique
+  contractStatus        ContractStatus @default(TRIAL)
+  customDomain          String?        @unique
   logoUrl               String?
   primaryColor          String?
-  requireResultApproval Boolean         @default(true)
-  createdAt             DateTime        @default(now())
-  updatedAt             DateTime        @updatedAt
+  requireResultApproval Boolean        @default(true)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
 
   users                   User[]
   academicYears           AcademicYear[]
@@ -78,6 +77,17 @@ model Institution {
   faculties               Faculty[]
   clearanceStageTemplates ClearanceStageTemplate[]
   clearanceSessions       ClearanceSession[]
+  licenses                InstitutionLicense[]
+}
+
+model InstitutionLicense {
+  id            String          @id @default(cuid())
+  institutionId String
+  institution   Institution     @relation(fields: [institutionId], references: [id])
+  type          InstitutionType
+  grantedAt     DateTime        @default(now())
+
+  @@unique([institutionId, type])
 }
 
 // ============================================================
