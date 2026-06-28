@@ -1,0 +1,28 @@
+{
+  "name": "educore-universal-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stleo1994-dotcom/educore-universal-backend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/stleo1994-dotcom/educore-universal-backend/issues"
+  },
+  "homepage": "https://github.com/stleo1994-dotcom/educore-universal-backend#readme",
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "dotenv": "^17.4.2"
+  },
+  "devDependencies": {
+    "prisma": "^5.22.0"
+  }
+}

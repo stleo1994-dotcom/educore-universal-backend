@@ -1,0 +1,271 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum InstitutionType {
+  NURSERY
+  PRIMARY
+  SECONDARY
+  COLLEGE
+  POLYTECHNIC
+  UNIVERSITY
+  VOCATIONAL
+}
+
+enum ContractStatus {
+  TRIAL
+  ACTIVE
+  SUSPENDED
+  CANCELLED
+}
+
+enum GlobalRole {
+  PLATFORM_ADMIN
+  INSTITUTION_ADMIN
+  STAFF
+  STUDENT
+  PARENT
+}
+
+enum ResultStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  PUBLISHED
+  REJECTED
+}
+
+enum ClearanceScope {
+  NEW_STUDENTS_ONLY
+  ALL_STUDENTS
+}
+
+enum ClearanceStatus {
+  PENDING
+  CLEARED
+  REJECTED
+}
+
+// ============================================================
+// CORE: INSTITUTION
+// ============================================================
+
+model Institution {
+  id                    String          @id @default(cuid())
+  name                  String
+  slug                  String          @unique
+  type                  InstitutionType
+  contractStatus        ContractStatus  @default(TRIAL)
+  customDomain          String?         @unique
+  logoUrl               String?
+  primaryColor          String?
+  requireResultApproval Boolean         @default(true)
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  users                   User[]
+  academicYears           AcademicYear[]
+  levels                  Level[]
+  faculties               Faculty[]
+  clearanceStageTemplates ClearanceStageTemplate[]
+  clearanceSessions       ClearanceSession[]
+}
+
+// ============================================================
+// CORE: USERS & ROLES
+// ============================================================
+
+model User {
+  id            String       @id @default(cuid())
+  institutionId String?
+  institution   Institution? @relation(fields: [institutionId], references: [id])
+  email         String       @unique
+  passwordHash  String
+  fullName      String
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  roles UserRole[]
+
+  supervisorId String?
+  supervisor   User?   @relation("Supervision", fields: [supervisorId], references: [id])
+  reports      User[]  @relation("Supervision")
+
+  staffProfile   StaffProfile?
+  studentProfile StudentProfile?
+
+  parentLinks ParentStudentLink[] @relation("ParentUser")
+  childLinks  ParentStudentLink[] @relation("StudentUser")
+}
+
+model UserRole {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id])
+  role      GlobalRole
+  grantedAt DateTime   @default(now())
+
+  @@unique([userId, role])
+}
+
+model StaffProfile {
+  id           String      @id @default(cuid())
+  userId       String      @unique
+  user         User        @relation(fields: [userId], references: [id])
+  title        String?
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+}
+
+model StudentProfile {
+  id          String     @id @default(cuid())
+  userId      String     @unique
+  user        User       @relation(fields: [userId], references: [id])
+  sectionId   String?
+  section     Section?   @relation(fields: [sectionId], references: [id])
+  programmeId String?
+  programme   Programme? @relation(fields: [programmeId], references: [id])
+}
+
+model ParentStudentLink {
+  id        String @id @default(cuid())
+  parentId  String
+  parent    User   @relation("ParentUser", fields: [parentId], references: [id])
+  studentId String
+  student   User   @relation("StudentUser", fields: [studentId], references: [id])
+
+  @@unique([parentId, studentId])
+}
+
+// ============================================================
+// ACADEMIC CALENDAR
+// ============================================================
+
+model AcademicYear {
+  id            String      @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  name          String
+  isActive      Boolean     @default(true)
+
+  clearanceSessions ClearanceSession[]
+
+  @@unique([institutionId, name])
+}
+
+// ============================================================
+// ACADEMIC STRUCTURE: SECONDARY-STYLE
+// ============================================================
+
+model Level {
+  id            String      @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  name          String
+  order         Int
+  sections      Section[]
+
+  @@unique([institutionId, name])
+}
+
+model Section {
+  id       String           @id @default(cuid())
+  levelId  String
+  level    Level            @relation(fields: [levelId], references: [id])
+  name     String
+  students StudentProfile[]
+
+  @@unique([levelId, name])
+}
+
+// ============================================================
+// ACADEMIC STRUCTURE: UNIVERSITY-STYLE
+// ============================================================
+
+model Faculty {
+  id            String       @id @default(cuid())
+  institutionId String
+  institution   Institution  @relation(fields: [institutionId], references: [id])
+  name          String
+  departments   Department[]
+
+  @@unique([institutionId, name])
+}
+
+model Department {
+  id         String         @id @default(cuid())
+  facultyId  String
+  faculty    Faculty        @relation(fields: [facultyId], references: [id])
+  name       String
+  staff      StaffProfile[]
+  programmes Programme[]
+
+  @@unique([facultyId, name])
+}
+
+model Programme {
+  id           String           @id @default(cuid())
+  departmentId String
+  department   Department       @relation(fields: [departmentId], references: [id])
+  name         String
+  students     StudentProfile[]
+
+  @@unique([departmentId, name])
+}
+
+// ============================================================
+// CLEARANCE SYSTEM (UNIVERSITY-STYLE)
+// ============================================================
+
+model ClearanceStageTemplate {
+  id             String      @id @default(cuid())
+  institutionId  String
+  institution    Institution @relation(fields: [institutionId], references: [id])
+  name           String
+  description    String?
+  order          Int
+  ownerStaffRole String?
+  isActive       Boolean     @default(true)
+
+  records ClearanceRecord[]
+
+  @@unique([institutionId, name])
+}
+
+model ClearanceSession {
+  id             String         @id @default(cuid())
+  institutionId  String
+  institution    Institution    @relation(fields: [institutionId], references: [id])
+  academicYearId String
+  academicYear   AcademicYear   @relation(fields: [academicYearId], references: [id])
+  name           String
+  appliesTo      ClearanceScope
+  isActive       Boolean        @default(true)
+
+  records ClearanceRecord[]
+}
+
+model ClearanceRecord {
+  id                 String                 @id @default(cuid())
+  clearanceSessionId String
+  clearanceSession   ClearanceSession       @relation(fields: [clearanceSessionId], references: [id])
+  studentId          String
+  stageTemplateId    String
+  stageTemplate      ClearanceStageTemplate @relation(fields: [stageTemplateId], references: [id])
+  status             ClearanceStatus        @default(PENDING)
+  reviewedById       String?
+  remark             String?
+  updatedAt          DateTime               @updatedAt
+
+  @@unique([clearanceSessionId, studentId, stageTemplateId])
+}
